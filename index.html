@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Jeopardy (HTML + CSS Only)</title>
+    <style>
+        :root {
+            --bg: #0c1020;
+            --panel: #131a33;
+            --panel-2: #182042;
+            --accent: #5ac8fa;
+            --accent-2: #7ef0c3;
+            --text: #e8ecff;
+            --muted: #aab1d6;
+            --gold: #f9d65d;
+            --danger: #ff5e57;
+            --success: #2dd36f;
+            --warning: #ffa94d;
+        }
+
+        * {
+            box-sizing: border-box
+        }
+
+        html,
+        body {
+            height: 100%
+        }
+
+        body {
+            margin: 0;
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, "Helvetica Neue", Arial, sans-serif;
+            background: radial-gradient(1000px 500px at 20% 10%, #182042, #0c1020 60%), #0c1020;
+            color: var(--text);
+        }
+
+        header {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 20px;
+            background: linear-gradient(180deg, rgba(255, 255, 255, .06), transparent);
+            border-bottom: 1px solid rgba(255, 255, 255, .08);
+            position: sticky;
+            top: 0;
+            backdrop-filter: saturate(1.2) blur(6px);
+            z-index: 5;
+        }
+
+        .title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 800;
+            letter-spacing: .6px
+        }
+
+        .badge {
+            padding: 4px 8px;
+            border-radius: 6px;
+            background: rgba(122, 191, 255, .15);
+            color: #aee1ff;
+            font-size: .8rem
+        }
+
+        .wrap {
+            max-width: 1200px;
+            margin: 18px auto;
+            padding: 0 16px
+        }
+
+        /* Scoreboard */
+        .scoreboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 12px;
+            margin-bottom: 18px
+        }
+
+        .team {
+            background: linear-gradient(180deg, rgba(255, 255, 255, .07), rgba(255, 255, 255, .03));
+            border: 1px solid rgba(255, 255, 255, .12);
+            border-radius: 12px;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px
+        }
+
+        .team .name,
+        .team .score {
+            background: rgba(255, 255, 255, .06);
+            border: 1px solid rgba(255, 255, 255, .14);
+            border-radius: 8px;
+            padding: 8px 10px;
+            min-height: 40px
+        }
+
+        .team .name[contenteditable],
+        .team .score[contenteditable] {
+            outline: none;
+            cursor: text
+        }
+
+        .team .label {
+            color: var(--muted);
+            font-size: .85rem
+        }
+
+        .team .score {
+            font-weight: 800;
+            letter-spacing: .4px;
+            color: var(--gold)
+        }
+
+        /* Board */
+        .board {
+            background: linear-gradient(180deg, rgba(255, 255, 255, .05), rgba(255, 255, 255, .02));
+            border: 1px solid rgba(255, 255, 255, .1);
+            border-radius: 14px;
+            overflow: hidden
+        }
+
+        .row {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr)
+        }
+
+        .cell {
+            min-height: 92px;
+            border-right: 1px solid rgba(255, 255, 255, .08);
+            border-bottom: 1px solid rgba(255, 255, 255, .08);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 10px;
+            position: relative
+        }
+
+        .row .cell:last-child {
+            border-right: none
+        }
+
+        .category {
+            background: linear-gradient(180deg, #1b2556, #152045);
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: .6px
+        }
+
+        /* Tile button as link */
+        .tile {
+            appearance: none;
+            -webkit-appearance: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(300px 160px at 50% -10%, rgba(90, 200, 250, .18), transparent);
+            border: 1px solid rgba(255, 255, 255, .12);
+            border-radius: 10px;
+            padding: 12px 14px;
+            color: #55d6ff;
+            font-weight: 900;
+            font-size: 1.5rem;
+            cursor: pointer;
+            text-decoration: none;
+            text-shadow: 0 2px 28px rgba(90, 200, 250, .35)
+        }
+
+        .tile.used {
+            cursor: not-allowed;
+            opacity: .2;
+            text-shadow: none;
+            color: #8dbfd1
+        }
+
+        /* "Used" checkbox overlay (no JS) */
+        .used-toggle {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: .8rem;
+            color: var(--muted)
+        }
+
+        .used-toggle input {
+            accent-color: #55d6ff
+        }
+
+        /* Modal via :target */
+        .backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, .6);
+            backdrop-filter: blur(2px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 10
+        }
+
+        .modal {
+            width: min(900px, 92vw);
+            background: linear-gradient(180deg, rgba(255, 255, 255, .08), rgba(255, 255, 255, .03));
+            border: 1px solid rgba(255, 255, 255, .14);
+            border-radius: 16px;
+            padding: 18px;
+            position: relative
+        }
+
+        .modal h2 {
+            margin: 4px 0 8px;
+            font-size: 1.1rem;
+            color: #aee1ff
+        }
+
+        .clue-value {
+            font-weight: 800;
+            color: var(--gold);
+            letter-spacing: .6px
+        }
+
+        .clue-text {
+            font-size: 1.35rem;
+            line-height: 1.5;
+            margin: 12px 0;
+            color: #eaf2ff
+        }
+
+        .answer {
+            margin-top: 8px;
+            padding: 10px;
+            border-radius: 10px;
+            background: rgba(125, 255, 205, .08);
+            border: 1px dashed rgba(125, 255, 205, .25);
+            color: #bdfddf
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 8px
+        }
+
+        .close {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text);
+            background: var(--panel);
+            border: 1px solid rgba(255, 255, 255, .12);
+            padding: 10px 14px;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: 600
+        }
+
+        .legend {
+            color: var(--muted);
+            font-size: .9rem;
+            margin-top: 10px
+        }
+
+        /* Target behavior */
+        .backdrop:target {
+            display: flex
+        }
+
+        .modal:focus {
+            outline: 2px solid #7ef0c3
+        }
+
+        /* Responsive */
+        @media (max-width:700px) {
+            .tile {
+                font-size: 1.2rem
+            }
+
+            .cell {
+                min-height: 80px
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <div class="title">
+            <span style="font-size:1.4rem;">JEOPARDY!</span>
+            <span class="badge">HTML + CSS only</span>
+        </div>
+        <div class="badge">Tip: Type scores in the boxes (contenteditable)</div>
+    </header>
+
+    <div class="wrap">
+        <!-- Scoreboard (type directly) -->
+        <section aria-label="Scoreboard" class="scoreboard">
+            <div class="team">
+                <div class="label">Team Name</div>
+                <div class="name" contenteditable spellcheck="false">Team 1</div>
+                <div class="label">Score</div>
+                <div class="score" contenteditable spellcheck="false">$0</div>
+            </div>
+            <div class="team">
+                <div class="label">Team Name</div>
+                <div class="name" contenteditable spellcheck="false">Team 2</div>
+                <div class="label">Score</div>
+                <div class="score" contenteditable spellcheck="false">$0</div>
+            </div>
+            <div class="team">
+                <div class="label">Team Name</div>
+                <div class="name" contenteditable spellcheck="false">Team 3</div>
+                <div class="label">Score</div>
+                <div class="score" contenteditable spellcheck="false">$0</div>
+            </div>
+            <div class="team">
+                <div class="label">Team Name</div>
+                <div class="name" contenteditable spellcheck="false">Team 4</div>
+                <div class="label">Score</div>
+                <div class="score" contenteditable spellcheck="false">$0</div>
+            </div>
+            <div class="team">
+                <div class="label">Team Name</div>
+                <div class="name" contenteditable spellcheck="false">Team 5</div>
+                <div class="label">Score</div>
+                <div class="score" contenteditable spellcheck="false">$0</div>
+            </div>
+        </section>
+
+        <!-- Board -->
+        <section aria-label="Board" class="board">
+            <!-- Categories -->
+            <div class="row">
+                <div class="cell category">Programming</div>
+                <div class="cell category">Cloud</div>
+                <div class="cell category">Web</div>
+                <div class="cell category">DevOps</div>
+                <div class="cell category">Data</div>
+                <div class="cell category">General</div>
+            </div>
+
+            <!-- 5 rows of clues -->
+            <!-- Row 1 -->
+            <div class="row">
+                <!-- Programming $200 -->
+                <div class="cell">
+                    <label class="used-toggle">
+                        <input type="checkbox" aria-label="Mark used"> Used
+                    </label>
+                    <a class="tile" href="#c0r0">$200</a>
+                </div>
+                <!-- Cloud $200 -->
+                <div class="cell">
+                    <label class="used-toggle"><input type="checkbox" aria-label="Mark used"> Used</label>
+                    <a class="tile" href="#c1r0">$200</a>
+                </div>
+                <!-- Web $200 -->
+                <div class="cell">
+                    <label class="used-toggle"><input type="checkbox" aria-label="Mark used"> Used</label>
+                    <a class="tile" href="#c2r0">$200</a>
+                </div>
+                <!-- DevOps $200 -->
+                <div class="cell">
+                    <label class="used-toggle"><input type="checkbox" aria-label="Mark used"> Used</label>
+                    <a class="tile" href="#c3r0">$200</a>
+                </div>
+                <!-- Data $200 -->
+                <div class="cell">
+                    <label class="used-toggle"><input type="checkbox" aria-label="Mark used"> Used</label>
+                    <a class="tile" href="#c4r0">$200</a>
+                </div>
+                <!-- General $200 -->
+                <div class="cell">
+                    <label class="used-toggle"><input type="checkbox" aria-label="Mark used"> Used</label>
+                    <a class="tile" href="#c5r0">$200</a>
+                </div>
+            </div>
+
+            <!-- Row 2 -->
+            <div class="row">
+                <div class="cell"><label class="used-toggle"><input type="checkbox"> Used</label><a class="tile"
+                        href="#c0r1">$400</a></div>
+                <div class="cell"><label class="used-toggle"><input type="checkbox"> Used</label><a class="tile"
+                        href="#c1r1">$400</a></div>
+                <div class="cell"><label class="used-toggle"><input type="checkbox"> Used</label><a class="tile"
+                        href="#c2r1">$400</a></div>
+                <div class="cell"><label class="used-toggle"><input type="checkbox"> Used</label><a class="tile"
+                        href="#c3r1">$400</a></div>
+                <div class="cell"><label class="used-toggle"><input type="checkbox"> Used</label><a class="tile"
+                        href="#c4r1">$400</a></div>
+                <div class="cell"><label class="used-toggle"><input type="checkbox"> Used</label><a class="tile"
+                        href="#c5r1">$400</a></div>
+            </div>
+
+            <!-- Row 3 -->
+            <div class="row">
+                <div class="cell"><label class="used-toggle"><input type="checkbox"> Used</label><a class="tile"
+                        href="#c0r2">$600</a></div>
+                <div class="cell"><label class="used-toggle"><input type="checkbox"> Used</label><a class="tile"
+                        href="#c1r2">$600</a></div>
+                <div class="cell"><label class="used-toggle"><input type="checkbox"> Used</label><a class="tile"
+                        href="#c2r2">$600</a></div>
+                <div class="cell"><label class="used-toggle"><input type="checkbox"> Used</label><a class="tile"
+                        href="#c3r2">$600</a></div>
+                <div class="cell"><label class="used-toggle"><input type="checkbox"> Used</label><a class="tile"
+                        href="#c4r2">$600</a></div>
+                <div class="cell"><label class="used-toggle"><input type="checkbox"> Used</label><a class="tile"
+                        href="#c5r2">$600</a></div>
+            </div>
+
+            <!-- Row 4 -->
+            <div class="row">
+                <div class="cell"><label class="used-toggle"><input type="checkbox"> Used</label><a class="tile"
+                        href="#c0r3">$800</a></div>
+                <div class="cell"><label class="used-toggle"><input type="checkbox"> Used</label><a class="tile"
+                        href="#c1r3">$800</a></div>
+                <div class="cell"><label class="used-toggle"><input type="checkbox"> Used</label><a class="tile"
+                        href="#c2r3">$800</a></div>
+                <div class="cell"><label class="used-toggle"><input type="checkbox"> Used</label><a class="tile"
+                        href="#c3r3">$800</a></div>
+                <div class="cell"><label class="used-toggle"><input type="checkbox"> Used</label><a class="tile"
+                        href="#c4r3">$800</a></div>
+                <div class="cell"><label class="used-toggle"><input type="checkbox"> Used</label><a class="tile"
+                        href="#c5r3">$800</a></div>
+            </div>
+
+            <!-- Row 5 -->
+            <div class="row">
+                <div class="cell"><label class="used-toggle"><input type="checkbox"> Used</label><a class="tile"
+                        href="#c0r4">$1000</a></div>
+                <div class="cell"><label class="used-toggle"><input type="checkbox"> Used</label><a class="tile"
+                        href="#c1r4">$1000</a></div>
+                <div class="cell"><label class="used-toggle"><input type="checkbox"> Used</label><a class="tile"
+                        href="#c2r4">$1000</a></div>
+                <div class="cell"><label class="used-toggle"><input type="checkbox"> Used</label><a class="tile"
+                        href="#c3r4">$1000</a></div>
+                <div class="cell"><label class="used-toggle"><input type="checkbox"> Used</label><a class="tile"
+                        href="#c4r4">$1000</a></div>
+                <div class="cell"><label class="used-toggle"><input type="checkbox"> Used</label><a class="tile"
+                        href="#c5r4">$1000</a></div>
+            </div>
+        </section>
+    </div>
+
+    <!-- CSS-only Modals (one per clue; open via #id target) -->
+    <!-- Programming -->
+    <div id="c0r0" class="backdrop">
+        <div class="modal" tabindex="-1">
+            <h2>Programming • <span class="clue-value">$200</span></h2>
+            <div class="clue-text">In JavaScript, which keyword declares a block-scoped variable?</div>
+            <details class="answer">
+                <summary>Reveal Answer</summary>let
+            </details>
+            <div class="modal-actions">
+                <a class="close" href="#">Close</a>
+            </div>
+            <p class="legend">Tip: type scores in team boxes; use “Used” checkbox on the tile.</p>
+        </div>
+    </div>
+    <div id="c0r1" class="backdrop">
+        <div class="modal">
+            <h2>Programming • <span class="clue-value">$400</span></h2>
+            <div class="clue-text">What HTML element is used to draw graphics via scripting?</div>
+            <details class="answer">
+                <summary>Reveal Answer</summary>&lt;canvas&gt;
+            </details><a class="close" href="#">Close</a>
+        </div>
+    </div>
+    <div id="c0r2" class="backdrop">
+        <div class="modal">
+            <h2>Programming • <span class="clue-value">$600</span></h2>
+            <div class="clue-text">Name the Python package commonly used for data frames.</div>
+            <details class="answer">
+                <summary>Reveal Answer</summary>pandas
+            </details><a class="close" href="#">Close</a>
+        </div>
+    </div>
+    <div id="c0r3" class="backdrop">
+        <div class="modal">
+            <h2>Programming • <span class="clue-value">$800</span></h2>
+            <div class="clue-text">In CSS, what property creates a grid layout?</div>
+            <details class="answer">
+                <summary>Reveal Answer</summary>display: grid
+            </details><a class="close" href="#">Close</a>
+        </div>
+    </div>
+    <div id="c0r4" class="backdrop">
+        <div class="modal">
+            <h2>Programming • <span class="clue-value">$1000</span></h2>
+            <div class="clue-text">Git command to switch branches?</div>
+            <details class="answer">
+                <summary>Reveal Answer</summary>git checkout &lt;branch&gt;
+            </details><a class="close" href="#">Close</a>
+        </div>
+    </div>
+
+    <!-- Cloud -->
+    <div id="c1r0" class="backdrop">
+        <div class="modal">
+            <h2>Cloud • <span class="clue-value">$200</span></h2>
+            <div class="clue-text">AWS service for object storage?</div>
+            <details class="answer">
+                <summary>Reveal Answer</summary>Amazon S3
+            </details><a class="close" href="#">Close</a>
+        </div>
+    </div>
+    <div id="c1r1" class="backdrop">
+        <div class="modal">
+            <h2>Cloud • <span class="clue-value">$400</span></h2>
+            <div class="clue-text">Managed containers on AWS without servers?</div>
+            <details class="answer">
+                <summary>Reveal Answer</summary>AWS Fargate
+            </details><a class="close" href="#">Close</a>
+        </div>
+    </div>
+    <div id="c1r2" class="backdrop">
+        <div class="modal">
+            <h2>Cloud • <span class="clue-value">$600</span></h2>
+            <div class="clue-text">Service for virtual machines in Azure?</div>
+            <details class="answer">
+                <summary>Reveal Answer</summary>Azure Virtual Machines
+            </details><a class="close" href="#">Close</a>
+        </div>
+    </div>
+    <div id="c1r3" class="backdrop">
+        <div class="modal">
+            <h2>Cloud • <span class="clue-value">$800</span></h2>
+            <div class="clue-text">GCP's data warehouse?</div>
+            <details class="answer">
+                <summary>Reveal Answer</summary>BigQuery
+            </details><a class="close" href="#">Close</a>
+        </div>
+    </div>
+    <div id="c1r4" class="backdrop">
+        <div class="modal">
+            <h2>Cloud • <span class="clue-value">$1000</span></h2>
+            <div class="clue-text">AWS service for managed Kubernetes?</div>
+            <details class="answer">
+                <summary>Reveal Answer</summary>Amazon EKS
+            </details><a class="close" href="#">Close</a>
+        </div>
+    </div>
+
+    <!-- Web -->
+    <div id="c2r0" class="backdrop">
+        <div class="modal">
+            <h2>Web • <span class="clue-value">$200</span></h2>
+            <div class="clue-text">HTTP status code for success (OK)?</div>
+            <details class="answer">
+                <summary>Reveal Answer</summary>200
+            </details><a class="close" href="#">Close</a>
+        </div>
+    </div>
+    <div id="c2r1" class="backdrop">
+        <div class="modal">
+            <h2>Web • <span class="clue-value">$400</span></h2>
+            <div class="clue-text">What does CSS stand for?</div>
+            <details class="answer">
+                <summary>Reveal Answer</summary>Cascading Style Sheets
+            </details><a class="close" href="#">Close</a>
+        </div>
+    </div>
+    <div id="c2r2" class="backdrop">
+        <div class="modal">
+            <h2>Web • <span class="clue-value">$600</span></h2>
+            <div class="clue-text">API format often using braces and key-value pairs?</div>
+            <details class="answer">
+                <summary>Reveal Answer</summary>JSON
+            </details><a class="close" href="#">Close</a>
+        </div>
+    </div>
+    <div id="c2r3" class="backdrop">
+        <div class="modal">
+            <h2>Web • <span class="clue-value">$800</span></h2>
+            <div class="clue-text">Protocol for secure web traffic?</div>
+            <details class="answer">
+                <summary>Reveal Answer</summary>HTTPS
+            </details><a class="close" href="#">Close</a>
+        </div>
+    </div>
+    <div id="c2r4" class="backdrop">
+        <div class="modal">
+            <h2>Web • <span class="clue-value">$1000</span></h2>
+            <div class="clue-text">Tag to include JS in HTML?</div>
+            <details class="answer">
+                <summary>Reveal Answer</summary>&lt;script&gt;
+            </details><a class="close" href="#">Close</a>
+        </div>
+    </div>
+
+    <!-- DevOps -->
+    <div id="c3r0" class="backdrop">
+        <div class="modal">
+            <h2>DevOps • <span class="clue-value">$200</span></h2>
+            <div class="clue-text">CI tool by GitHub?</div>
+            <details class="answer">
+                <summary>Reveal Answer</summary>GitHub Actions
+            </details><a class="close" href="#">Close</a>
+        </div>
+    </div>
+    <div id="c3r1" class="backdrop">
+        <div class="modal">
+            <h2>DevOps • <span class="clue-value">$400</span></h2>
+            <div class="clue-text">Infra as Code by HashiCorp?</div>
+            <details class="answer">
+                <summary>Reveal Answer</summary>Terraform
+            </details><a class="close" href="#">Close</a>
+        </div>
+    </div>
+    <div id="c3r2" class="backdrop">
+        <div class="modal">
+            <h2>DevOps • <span class="clue-value">$600</span></h2>
+            <div class="clue-text">Dockerfile instruction to set working dir?</div>
+            <details class="answer">
+                <summary>Reveal Answer</summary>WORKDIR
+            </details><a class="close" href="#">Close</a>
+        </div>
+    </div>
+    <div id="c3r3" class="backdrop">
+        <div class="modal">
+            <h2>DevOps • <span class="clue-value">$800</span></h2>
+            <div class="clue-text">Kubernetes object for long-running processes?</div>
+            <details class="answer">
+                <summary>Reveal Answer</summary>Deployment
+            </details><a class="close" href="#">Close</a>
+        </div>
+    </div>
+    <div id="c3r4" class="backdrop">
+        <div class="modal">
+            <h2>DevOps • <span class="clue-value">$1000</span></h2>
+            <div class="clue-text">Command to view running Docker containers?</div>
+            <details class="answer">
+                <summary>Reveal Answer</summary>docker ps
+            </details><a class="close" href="#">Close</a>
+        </div>
+    </div>
+
+    <!-- Data -->
+    <div id="c4r0" class="backdrop">
+        <div class="modal">
+            <h2>Data • <span class="clue-value">$200</span></h2>
+            <div class="clue-text">Relational DB query language?</div>
+            <details class="answer">
+                <summary>Reveal Answer</summary>SQL
+            </details><a class="close" href="#">Close</a>
+        </div>
+    </div>
+    <div id="c4r1" class="backdrop">
+        <div class="modal">
+            <h2>Data • <span class="clue-value">$400</span></h2>
+            <div class="clue-text">Chart type best for trends over time?</div>
+            <details class="answer">
+                <summary>Reveal Answer</summary>Line chart
+            </details><a class="close" href="#">Close</a>
+        </div>
+    </div>
+    <div id="c4r2" class="backdrop">
+        <div class="modal">
+            <h2>Data • <span class="clue-value">$600</span></h2>
+            <div class="clue-text">Type of learning using labeled data?</div>
+            <details class="answer">
+                <summary>Reveal Answer</summary>Supervised learning
+            </details><a class="close" href="#">Close</a>
+        </div>
+    </div>
+    <div id="c4r3" class="backdrop">
+        <div class="modal">
+            <h2>Data • <span class="clue-value">$800</span></h2>
+            <div class="clue-text">Model to reduce dimensions while preserving variance?</div>
+            <details class="answer">
+                <summary>Reveal Answer</summary>PCA
+            </details><a class="close" href="#">Close</a>
+        </div>
+    </div>
+    <div id="c4r4" class="backdrop">
+        <div class="modal">
+            <h2>Data • <span class="clue-value">$1000</span></h2>
+            <div class="clue-text">Storage optimized for columns?</div>
+            <details class="answer">
+                <summary>Reveal Answer</summary>Columnar (e.g., Parquet)
+            </details><a class="close" href="#">Close</a>
+        </div>
+    </div>
+
+    <!-- General -->
+    <div id="c5r0" class="backdrop">
+        <div class="modal">
+            <h2>General • <span class="clue-value">$200</span></h2>
+            <div class="clue-text">Capital of New Jersey?</div>
+            <details class="answer">
+                <summary>Reveal Answer</summary>Trenton
+            </details><a class="close" href="#">Close</a>
+        </div>
+    </div>
+    <div id="c5r1" class="backdrop">
+        <div class="modal">
+            <h2>General • <span class="clue-value">$400</span></h2>
+            <div class="clue-text">Device that measures temperature?</div>
+            <details class="answer">
+                <summary>Reveal Answer</summary>Thermometer
+            </details><a class="close" href="#">Close</a>
+        </div>
+    </div>
+    <div id="c5r2" class="backdrop">
+        <div class="modal">
+            <h2>General • <span class="clue-value">$600</span></h2>
+            <div class="clue-text">Largest ocean on Earth?</div>
+            <details class="answer">
+                <summary>Reveal Answer</summary>Pacific Ocean
+            </details><a class="close" href="#">Close</a>
+        </div>
+    </div>
+    <div id="c5r3" class="backdrop">
+        <div class="modal">
+            <h2>General • <span class="clue-value">$800</span></h2>
+            <div class="clue-text">Chemical symbol for Gold?</div>
+            <details class="answer">
+                <summary>Reveal Answer</summary>Au
+            </details><a class="close" href="#">Close</a>
+        </div>
+    </div>
+    <div id="c5r4" class="backdrop">
+        <div class="modal">
+            <h2>General • <span class="clue-value">$1000</span></h2>
+            <div class="clue-text">First man on the Moon?</div>
+            <details class="answer">
+                <summary>Reveal Answer</summary>Neil Armstrong
+            </details><a class="close" href="#">Close</a>
+        </div>
+    </div>
+
+</body>
+
+</html>
